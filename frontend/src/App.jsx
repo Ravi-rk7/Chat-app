@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
+
 import Navbar from './components/Navbar';
 import {Routes,Route, Navigate} from "react-router-dom";
+
 import SignUpPage from "./pages/SignUpPage.jsx";
 import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import LogInPage from './pages/LogInPage.jsx';
+
 import { useAuthStore } from './store/useAuthStore.js';
 import {Loader} from "lucide-react";
 import {Toaster} from "react-hot-toast";
@@ -39,6 +42,7 @@ const App = () => {
         <Route path='/settings' element={<SettingsPage/>}/>
         <Route path='/profile' element={authUser ? <ProfilePage/> : <Navigate to="/login"/>}/>
       </Routes>
+
     <Toaster />
     </div>
   );
