@@ -32,7 +32,7 @@ const App = () => {
   console.log({authUser});
 
   return (
-    <div >
+    <div data-theme="night">
       <Navbar/>
 
       <Routes>
