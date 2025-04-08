@@ -12,10 +12,11 @@ import LogInPage from './pages/LogInPage.jsx';
 import { useAuthStore } from './store/useAuthStore.js';
 import {Loader} from "lucide-react";
 import {Toaster} from "react-hot-toast";
+import { useThemeStore } from './store/useThemeStore.js';
 
 
 const App = () => {
-
+  const {theme} = useThemeStore();
   const {authUser,checkAuth,isCheckingAuth} = useAuthStore(); 
   useEffect(()=>{
     checkAuth();
@@ -32,7 +33,7 @@ const App = () => {
   console.log({authUser});
 
   return (
-    <div data-theme="night">
+    <div data-theme={theme}>
       <Navbar/>
 
       <Routes>

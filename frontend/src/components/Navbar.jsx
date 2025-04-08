@@ -21,7 +21,7 @@ const Navbar = () => {
               <h1 className="text-lg font-bold ">Yappy</h1>
             </Link>
           </div>
-{/*  */}
+{/* nav links */}
 
         <div className="flex items-center gap-2">
           <Link to={"/settings"} className={`btn btn-sm gap-2 transition-colors`}>
