@@ -5,7 +5,7 @@ import ChatContainer from "../components/ChatContainer";
 
 const HomePage = () => {
   const {selectedUser} = useChatStore();
-
+  
   return (
     <div className="bg-base-200">
         <div className="flex justify-center items-center pt-20 px-4 ">
