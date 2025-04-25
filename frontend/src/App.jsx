@@ -17,7 +17,7 @@ import { useThemeStore } from './store/useThemeStore.js';
 
 const App = () => {
   const {theme} = useThemeStore();
-  const {authUser,checkAuth,isCheckingAuth} = useAuthStore(); 
+  const {authUser,checkAuth,isCheckingAuth,onlineUsers} = useAuthStore(); 
   useEffect(()=>{
     checkAuth();
   },[checkAuth]);
@@ -31,7 +31,7 @@ const App = () => {
   }
 
   console.log({authUser});
-
+  console.log(onlineUsers)
   return (
     <div data-theme={theme}>
       <Navbar/>
