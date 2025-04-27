@@ -8,12 +8,17 @@ import { formatMessageTime } from '../lib/utils';
 
 const ChatContainer = () => {
 
-  const {isMessagesLoading, messages,getMessages , selectedUser} = useChatStore();
+  const {isMessagesLoading, messages,getMessages , selectedUser,subscribeToMessages
+    , unsubscribeFromMessages
+  } = useChatStore();
   const {authUser} = useAuthStore();
 
     useEffect(()=>{
       getMessages(selectedUser._id);
-    },[selectedUser._id,getMessages]);
+      subscribeToMessages();
+
+      return () => unsubscribeFromMessages();
+    },[selectedUser._id,getMessages,subscribeToMessages,unsubscribeFromMessages]);
 
   if(isMessagesLoading) {  
     return (
@@ -44,7 +49,7 @@ const ChatContainer = () => {
               </div>
             </div>
                   <div className="chat-header mb-1">
-                    <time datetime="text-xs opacity-50 ml-1 ">
+                    <time dateTime="text-xs opacity-50 ml-1 ">
                       {formatMessageTime(message.createdAt)}
                     </time>
                   </div>
