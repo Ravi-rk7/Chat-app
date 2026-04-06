@@ -2,8 +2,10 @@ import  { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import {io} from "socket.io-client";
+import { SOCKET_URL } from "../lib/env.js";
 
-const BASE_URL = "http://localhost:5001";
+const getErrorMessage = (error, fallback) =>
+    error?.response?.data?.message || fallback;
 
 export const useAuthStore = create((set,get)=>({
     authUser:null,
@@ -23,12 +25,14 @@ export const useAuthStore = create((set,get)=>({
 
         } catch (error) {
             console.log("Error in checkAuth: ", error);
-            set({authUser:null});
+            get().disconnectSocket();
+            set({authUser:null, socket:null, onlineUsers:[]});
         } finally {
             set({isCheckingAuth:false}); 
         }
     },
     signup: async (data)=>{
+        set({isSigningUp:true});
         try {
            const res = await axiosInstance.post("/auth/signup",data);
            set({authUser:res.data});
@@ -36,7 +40,7 @@ export const useAuthStore = create((set,get)=>({
 
            get().connectSocket();
         } catch (error) {
-            toast.error(error.response.data.message);
+            toast.error(getErrorMessage(error,"Unable to create your account right now."));
         } finally{
             set({isSigningUp:false});
         }
@@ -51,7 +55,7 @@ export const useAuthStore = create((set,get)=>({
 
             get().connectSocket();
         } catch (error) {
-            toast.error(error.response.data.message);
+            toast.error(getErrorMessage(error,"Unable to sign you in right now."));
         } finally{
             set({isLoggingIn:false});
         }
@@ -65,7 +69,7 @@ export const useAuthStore = create((set,get)=>({
             toast.success("Logged out successfully!");
             get().disconnectSocket();
         } catch (error) {
-            return toast.error(error.response.data.message);
+            return toast.error(getErrorMessage(error,"Unable to log out right now."));
         }
     },
 
@@ -78,7 +82,7 @@ export const useAuthStore = create((set,get)=>({
 
         } catch (error) {
             console.log("Error in Update profile: ",error);
-            toast.error(error.response.data.message);
+            toast.error(getErrorMessage(error,"Unable to update your profile right now."));
         } finally {
             set({isUpdatingProfile:false});
         }
@@ -88,20 +92,30 @@ export const useAuthStore = create((set,get)=>({
         if(!authUser || get().socket?.connected ){
             return;
         }
-        const socket = io(BASE_URL,{
+        if(get().socket){
+            get().socket.disconnect();
+        }
+
+        const socket = io(SOCKET_URL,{
             query: {
                 userId : authUser._id,
             },
+            withCredentials: true,
         });
 
         socket.connect();
         set({socket:socket});
 
-        socket.on("getOnlineUsers",(userIds)=>{
-            set({onlineUsers:userIds});
+        socket.on("onlineUsers",(userIds)=>{
+            set({onlineUsers:userIds.map(String)});
+        });
+
+        socket.on("disconnect",()=>{
+            set({socket:null, onlineUsers:[]});
         });
     },
     disconnectSocket: ()=>{
         if(get().socket?.connected) get().socket.disconnect();
+        set({socket:null, onlineUsers:[]});
     }
 }));

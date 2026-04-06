@@ -19,7 +19,11 @@ const userSchema = new Schema({
     profilePic:{
         type:String,
         default:"",
-    },    
+    },
+    lastSeen: {
+        type: Date,
+        default: Date.now,
+    },
 },
 { timestamps:true },
 
