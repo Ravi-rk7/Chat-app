@@ -86,6 +86,7 @@ export function getMessagePreview(message) {
 
 export function getMessageStatus(message, isOwnMessage) {
   if (!isOwnMessage) return "";
+  if (message.groupId) return message.isSending ? "Sending..." : "";
   if (message.seenAt) return "Seen";
   if (message.deliveredAt) return "Delivered";
   return message.isSending ? "Sending..." : "Sent";

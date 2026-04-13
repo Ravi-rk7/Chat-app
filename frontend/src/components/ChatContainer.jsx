@@ -1,35 +1,70 @@
 import { Fragment, useEffect, useRef } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
-import { formatMessageDateLabel, formatMessageTime, getMessageStatus, isSameDay } from "../lib/utils";
+import {
+  formatMessageDateLabel,
+  formatMessageTime,
+  getMessageStatus,
+  isSameDay,
+} from "../lib/utils";
 
 const getId = (value) => (typeof value === "string" ? value : value?._id);
+const isTemporaryMessage = (id) =>
+  typeof id === "string" && id.startsWith("temp-");
 
 const ChatContainer = () => {
-  const { isMessagesLoading, messages, getMessages, selectedUser, markMessagesAsSeen, typingUserIds } = useChatStore();
+  const {
+    isMessagesLoading,
+    messages,
+    getMessages,
+    selectedUser,
+    markMessagesAsSeen,
+    typingUserIds,
+    deletingMessageIds,
+    deleteMessage,
+  } = useChatStore();
   const { authUser, socket } = useAuthStore();
   const messageEndRef = useRef(null);
   const isTyping = typingUserIds.includes(selectedUser._id);
+  const isGroupConversation = Boolean(selectedUser?.isGroup);
 
   useEffect(() => {
-    getMessages(selectedUser._id);
-  }, [selectedUser._id, getMessages]);
+    getMessages(selectedUser._id, isGroupConversation);
+  }, [
+    selectedUser._id,
+    selectedUser?.isGroup,
+    getMessages,
+    isGroupConversation,
+  ]);
 
   useEffect(() => {
     if (!socket || !selectedUser?._id) {
       return undefined;
     }
 
-    socket.emit("chat:join", { targetUserId: selectedUser._id });
-    markMessagesAsSeen(selectedUser._id);
+    if (isGroupConversation) {
+      socket.emit("group:join", { groupId: selectedUser._id });
+      socket.emit("chat:join", { targetGroupId: selectedUser._id });
+      markMessagesAsSeen(selectedUser._id, true);
+    } else {
+      socket.emit("chat:join", { targetUserId: selectedUser._id });
+      markMessagesAsSeen(selectedUser._id, false);
+    }
 
     return () => {
       socket.emit("chat:leave", { targetUserId: selectedUser._id });
     };
-  }, [selectedUser._id, socket, markMessagesAsSeen]);
+  }, [
+    selectedUser._id,
+    selectedUser?.isGroup,
+    socket,
+    markMessagesAsSeen,
+    isGroupConversation,
+  ]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({
@@ -58,10 +93,35 @@ const ChatContainer = () => {
           const nextMessage = messages[index + 1];
           const senderId = getId(message.senderId);
           const isOwnMessage = senderId === authUser._id;
-          const shouldShowDate = !previousMessage || !isSameDay(previousMessage.createdAt, message.createdAt);
+          const senderProfilePic = isOwnMessage
+            ? authUser.profilePic || "/avatar.png"
+            : isGroupConversation
+              ? message.senderId?.profilePic || "/avatar.png"
+              : selectedUser.profilePic || "/avatar.png";
+          const senderName = isOwnMessage
+            ? authUser.fullName
+            : isGroupConversation
+              ? message.senderId?.fullName || "Member"
+              : selectedUser.fullName;
+          const shouldShowDate =
+            !previousMessage ||
+            !isSameDay(previousMessage.createdAt, message.createdAt);
           const shouldShowAvatar =
-            !previousMessage || getId(previousMessage.senderId) !== senderId || !isSameDay(previousMessage.createdAt, message.createdAt);
-          const shouldShowStatus = isOwnMessage && (!nextMessage || getId(nextMessage.senderId) !== senderId);
+            !previousMessage ||
+            getId(previousMessage.senderId) !== senderId ||
+            !isSameDay(previousMessage.createdAt, message.createdAt);
+          const shouldShowStatus =
+            isOwnMessage &&
+            (!nextMessage || getId(nextMessage.senderId) !== senderId);
+          const statusLabel = shouldShowStatus
+            ? getMessageStatus(message, isOwnMessage)
+            : "";
+          const messageId = getId(message._id);
+          const isDeleting = deletingMessageIds.includes(messageId);
+          const canDelete =
+            isOwnMessage &&
+            !message.isSending &&
+            !isTemporaryMessage(messageId);
 
           return (
             <Fragment key={message._id}>
@@ -73,19 +133,25 @@ const ChatContainer = () => {
                 </div>
               )}
 
-              <div className={`mb-3 flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-                <div className={`flex max-w-[88%] items-end gap-3 ${isOwnMessage ? "flex-row-reverse" : ""}`}>
+              <div
+                className={`mb-3 flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`flex max-w-[88%] items-end gap-3 ${isOwnMessage ? "flex-row-reverse" : ""}`}
+                >
                   {shouldShowAvatar ? (
                     <img
-                      src={isOwnMessage ? authUser.profilePic || "/avatar.png" : selectedUser.profilePic || "/avatar.png"}
-                      alt={isOwnMessage ? authUser.fullName : selectedUser.fullName}
+                      src={senderProfilePic}
+                      alt={senderName}
                       className="size-9 rounded-full object-cover ring-1 ring-base-300"
                     />
                   ) : (
                     <div className="size-9 shrink-0" />
                   )}
 
-                  <div className={`space-y-1 ${isOwnMessage ? "items-end" : "items-start"}`}>
+                  <div
+                    className={`group space-y-1 ${isOwnMessage ? "items-end" : "items-start"}`}
+                  >
                     <div
                       className={`rounded-[1.4rem] px-4 py-3 shadow-sm ${
                         isOwnMessage
@@ -93,6 +159,12 @@ const ChatContainer = () => {
                           : "border border-base-300/70 bg-base-100 text-base-content"
                       }`}
                     >
+                      {isGroupConversation && !isOwnMessage && (
+                        <p className="mb-1 text-xs font-semibold text-base-content/65">
+                          {senderName}
+                        </p>
+                      )}
+
                       {message.image && (
                         <img
                           src={message.image}
@@ -101,12 +173,38 @@ const ChatContainer = () => {
                         />
                       )}
 
-                      {message.text && <p className="whitespace-pre-wrap break-words text-sm sm:text-[15px]">{message.text}</p>}
+                      {message.text && (
+                        <p className="whitespace-pre-wrap break-words text-sm sm:text-[15px]">
+                          {message.text}
+                        </p>
+                      )}
                     </div>
 
-                    <div className={`px-1 text-[11px] text-base-content/50 ${isOwnMessage ? "text-right" : ""}`}>
-                      <time dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time>
-                      {shouldShowStatus && <span>{` - ${getMessageStatus(message, isOwnMessage)}`}</span>}
+                    <div
+                      className={`flex items-center gap-2 px-1 text-[11px] text-base-content/50 ${isOwnMessage ? "justify-end" : ""}`}
+                    >
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => deleteMessage(messageId)}
+                          disabled={isDeleting}
+                          title="Delete message"
+                          className="btn btn-ghost btn-xs btn-circle opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-100"
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </button>
+                      )}
+
+                      <div>
+                        <time dateTime={message.createdAt}>
+                          {formatMessageTime(message.createdAt)}
+                        </time>
+                        {statusLabel && <span>{` - ${statusLabel}`}</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -119,7 +217,11 @@ const ChatContainer = () => {
           <div className="mt-2 flex justify-start">
             <div className="flex items-end gap-3">
               <img
-                src={selectedUser.profilePic || "/avatar.png"}
+                src={
+                  isGroupConversation
+                    ? "/avatar.png"
+                    : selectedUser.profilePic || "/avatar.png"
+                }
                 alt={selectedUser.fullName}
                 className="size-9 rounded-full object-cover ring-1 ring-base-300"
               />

@@ -3,6 +3,7 @@ import http from "http";
 import express from "express";
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
+import Group from "../models/group.model.js";
 
 const app = express();
 
@@ -29,6 +30,11 @@ export function emitToUser(userId, event, payload) {
     io.to(`user:${userId}`).emit(event, payload);
 }
 
+export function emitToGroup(groupId, event, payload) {
+    if (!groupId) return;
+    io.to(`group:${groupId}`).emit(event, payload);
+}
+
 export function getRecieverSocketId(userId) {
     const socketIds = userSocketMap.get(userId?.toString());
     return socketIds ? Array.from(socketIds)[0] : null;
@@ -44,6 +50,15 @@ io.on("connection", async (socket) => {
         userSocketMap.set(userId, existingSockets);
         socket.data.userId = userId;
         socket.join(`user:${userId}`);
+
+        const groups = await Group.find({ members: userId })
+            .select("_id")
+            .lean()
+            .catch(() => []);
+
+        for (const group of groups) {
+            socket.join(`group:${group._id}`);
+        }
 
         const deliveredAt = new Date();
         const undeliveredMessages = await Message.find({
@@ -92,18 +107,45 @@ io.on("connection", async (socket) => {
         socket.data.activeChatPartnerId = targetUserId?.toString() || null;
     });
 
+    socket.on("group:join", ({ groupId } = {}) => {
+        if (!groupId) return;
+        socket.join(`group:${groupId}`);
+    });
+
     socket.on("chat:leave", () => {
         socket.data.activeChatPartnerId = null;
     });
 
-    socket.on("typing:start", ({ targetUserId } = {}) => {
-        if (!userId || !targetUserId) return;
-        emitToUser(targetUserId, "typing:start", { fromUserId: userId });
+    socket.on("typing:start", ({ targetUserId, targetGroupId } = {}) => {
+        if (!userId) return;
+
+        if (targetGroupId) {
+            socket.to(`group:${targetGroupId}`).emit("typing:start", {
+                fromUserId: userId,
+                fromGroupId: targetGroupId,
+            });
+            return;
+        }
+
+        if (targetUserId) {
+            emitToUser(targetUserId, "typing:start", { fromUserId: userId });
+        }
     });
 
-    socket.on("typing:stop", ({ targetUserId } = {}) => {
-        if (!userId || !targetUserId) return;
-        emitToUser(targetUserId, "typing:stop", { fromUserId: userId });
+    socket.on("typing:stop", ({ targetUserId, targetGroupId } = {}) => {
+        if (!userId) return;
+
+        if (targetGroupId) {
+            socket.to(`group:${targetGroupId}`).emit("typing:stop", {
+                fromUserId: userId,
+                fromGroupId: targetGroupId,
+            });
+            return;
+        }
+
+        if (targetUserId) {
+            emitToUser(targetUserId, "typing:stop", { fromUserId: userId });
+        }
     });
 
     socket.on("disconnect", async () => {

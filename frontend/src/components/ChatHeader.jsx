@@ -6,13 +6,16 @@ import { formatLastSeen } from "../lib/utils";
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser, typingUserIds } = useChatStore();
   const { onlineUsers } = useAuthStore();
-  const isOnline = onlineUsers.includes(selectedUser._id);
+  const isGroup = Boolean(selectedUser?.isGroup);
+  const isOnline = !isGroup && onlineUsers.includes(selectedUser._id);
   const isTyping = typingUserIds.includes(selectedUser._id);
   const statusLabel = isTyping
     ? "Typing..."
-    : isOnline
-      ? "Active now"
-      : `Last seen ${formatLastSeen(selectedUser.lastSeen)}`;
+    : isGroup
+      ? `${selectedUser.memberCount || 0} members`
+      : isOnline
+        ? "Active now"
+        : `Last seen ${formatLastSeen(selectedUser.lastSeen)}`;
 
   return (
     <div className="border-b border-base-300/70 bg-base-100/80 px-4 py-3 backdrop-blur">
@@ -27,12 +30,23 @@ const ChatHeader = () => {
 
           <div className="avatar">
             <div className="relative size-11 rounded-full">
-              <img src={selectedUser.profilePic || "/avatar.png"} alt={selectedUser.fullName} />
-              <span
-                className={`absolute bottom-0 right-0 size-3 rounded-full ring-2 ring-base-100 ${
-                  isOnline ? "bg-emerald-500" : "bg-base-300"
-                }`}
-              ></span>
+              {isGroup ? (
+                <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  G
+                </div>
+              ) : (
+                <>
+                  <img
+                    src={selectedUser.profilePic || "/avatar.png"}
+                    alt={selectedUser.fullName}
+                  />
+                  <span
+                    className={`absolute bottom-0 right-0 size-3 rounded-full ring-2 ring-base-100 ${
+                      isOnline ? "bg-emerald-500" : "bg-base-300"
+                    }`}
+                  ></span>
+                </>
+              )}
             </div>
           </div>
 
@@ -43,7 +57,7 @@ const ChatHeader = () => {
         </div>
 
         <div className="hidden rounded-full bg-base-200 px-3 py-1 text-xs font-medium text-base-content/60 sm:block">
-          {isOnline ? "Available" : "Away"}
+          {isGroup ? "Group" : isOnline ? "Available" : "Away"}
         </div>
       </div>
     </div>

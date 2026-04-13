@@ -14,7 +14,12 @@ const MessageInput = () => {
 
   const emitTypingState = (eventName) => {
     if (!socket || !selectedUser?._id) return;
-    socket.emit(eventName, { targetUserId: selectedUser._id });
+    socket.emit(
+      eventName,
+      selectedUser.isGroup
+        ? { targetGroupId: selectedUser._id }
+        : { targetUserId: selectedUser._id },
+    );
   };
 
   const stopTyping = () => {
@@ -93,10 +98,15 @@ const MessageInput = () => {
     return () => {
       clearTimeout(typingTimeoutRef.current);
       if (socket && activeTargetUserId) {
-        socket.emit("typing:stop", { targetUserId: activeTargetUserId });
+        socket.emit(
+          "typing:stop",
+          selectedUser?.isGroup
+            ? { targetGroupId: activeTargetUserId }
+            : { targetUserId: activeTargetUserId },
+        );
       }
     };
-  }, [selectedUser?._id, socket]);
+  }, [selectedUser?._id, selectedUser?.isGroup, socket]);
 
   return (
     <div className="w-full border-t border-base-300/70 bg-base-100/90 p-4 backdrop-blur">
@@ -119,7 +129,9 @@ const MessageInput = () => {
 
           <div className="min-w-0">
             <p className="font-medium">Image ready to send</p>
-            <p className="text-sm text-base-content/60">Add a caption or send it as-is.</p>
+            <p className="text-sm text-base-content/60">
+              Add a caption or send it as-is.
+            </p>
           </div>
         </div>
       )}
@@ -128,7 +140,7 @@ const MessageInput = () => {
         <div className="flex flex-1 gap-2">
           <input
             type="text"
-            placeholder={`Message ${selectedUser?.fullName || "your contact"}`}
+            placeholder={`Message ${selectedUser?.fullName || "this chat"}`}
             value={text}
             className="input input-bordered h-12 w-full rounded-2xl border-base-300 bg-base-100 px-4"
             onChange={handleTextChange}
@@ -161,7 +173,11 @@ const MessageInput = () => {
           className="btn btn-primary btn-circle h-12 w-12"
           disabled={(!text.trim() && !imagePreview) || isSendingMessage}
         >
-          {isSendingMessage ? <Loader2 className="size-5 animate-spin" /> : <Send size={20} />}
+          {isSendingMessage ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Send size={20} />
+          )}
         </button>
       </form>
     </div>
