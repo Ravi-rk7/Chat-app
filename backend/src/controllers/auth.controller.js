@@ -12,6 +12,11 @@ const serializeUser = (user) => ({
     lastSeen: user.lastSeen,
 });
 
+const serializeAuthResponse = (user, token) => ({
+    ...serializeUser(user),
+    token,
+});
+
 export const signup = async (req,res)=>{
     const {fullName,password,email} = req.body;
     try {
@@ -43,10 +48,10 @@ export const signup = async (req,res)=>{
 
         if(newUser){
             //generate JWT token here
-            generateToken(newUser._id,res);
+            const token = generateToken(newUser._id,res);
             await newUser.save();
 
-            res.status(201).json(serializeUser(newUser));
+            res.status(201).json(serializeAuthResponse(newUser, token));
 
         }else{
             return res.status(400).json({message:"Invalid user data!"});
@@ -73,11 +78,11 @@ export const login = async (req,res)=>{
             return res.status(400).json({message:"Invalid credentials!"});
         }
 
-        generateToken(user._id,res);
+        const token = generateToken(user._id,res);
         user.lastSeen = new Date();
         await user.save();
 
-        res.status(200).json(serializeUser(user));
+        res.status(200).json(serializeAuthResponse(user, token));
 
     } catch (error) {
         console.log(`Error in Login Controller: ${error.message}`);
