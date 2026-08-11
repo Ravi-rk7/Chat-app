@@ -1,4 +1,4 @@
-import { generateToken } from "../lib/utils.js";
+import { authCookieOptions, generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
@@ -87,7 +87,7 @@ export const login = async (req,res)=>{
 
 export const logout = (req,res)=>{
     try {
-        res.cookie("jwt","",{maxAge:0});
+        res.cookie("jwt","",{...authCookieOptions, maxAge:0});
         res.status(200).json({message:"Logged Out Successfully!"})
 
     } catch (error) {
