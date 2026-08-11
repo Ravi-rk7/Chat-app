@@ -17,8 +17,8 @@ const Navbar = () => {
                 <MessageSquare className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-none">Yappy</h1>
-                <p className="hidden text-xs text-base-content/60 sm:block">Realtime conversations, polished for production</p>
+                <h1 className="text-lg font-bold leading-none py-0.5">Yappy</h1>
+                <p className="hidden text-xs text-base-content/60 sm:block">Realtime conversations</p>
               </div>
             </Link>
           </div>
