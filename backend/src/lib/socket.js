@@ -4,6 +4,7 @@ import express from "express";
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import Group from "../models/group.model.js";
+import { allowedOrigins } from "./allowedOrigins.js";
 
 const app = express();
 
@@ -11,7 +12,7 @@ const server = http.createServer(app);
 
 const io = new Server((server), {
     cors: {
-        origin: [process.env.CLIENT_URL || "http://localhost:5173"],
+        origin: allowedOrigins,
         methods: ["GET", "POST"],
         credentials: true,
     },
